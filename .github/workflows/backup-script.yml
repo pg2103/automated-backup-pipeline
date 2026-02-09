@@ -1,1 +1,47 @@
-name:  
+name: Automated Backup Script Pipeline
+
+on:
+  # Automatic daily backup
+  schedule:
+    - cron: "0 2 * * *"
+
+  # Manual backup trigger
+  workflow_dispatch:
+    inputs:
+      backup_path:
+        description: "Path to back up"
+        required: true
+        default: "./"
+      retention_days:
+        description: "Days to keep backups"
+        required: true
+        default: "7"
+
+jobs:
+  backup-job:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Make script executable
+        run: chmod +x backup.sh
+
+      - name: Run backup script
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            ./backup.sh ./ 7
+          else
+            ./backup.sh "${{ inputs.backup_path }}" "${{ inputs.retention_days }}"
+          fi
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-archive
+          path: backups/*.tar.gz
+
+      - name: Fail if backup failed
+        if: failure()
+        run: exit 1
