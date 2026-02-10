@@ -1,11 +1,9 @@
 name: Automated Backup Script Pipeline
 
 on:
-  # Automatic daily backup
   schedule:
     - cron: "0 2 * * *"
 
-  # Manual backup trigger
   workflow_dispatch:
     inputs:
       backup_path:
@@ -29,6 +27,7 @@ jobs:
         run: chmod +x backup.sh
 
       - name: Run backup script
+        id: backup
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
             ./backup.sh ./ 7
@@ -37,11 +36,16 @@ jobs:
           fi
 
       - name: Upload backup artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: backup-archive
           path: backups/*.tar.gz
 
-      - name: Fail if backup failed
+      # ✅ NOTIFICATION STEP
+      - name: Notify on backup failure
         if: failure()
-        run: exit 1
+        run: |
+          echo "❌ BACKUP FAILED"
+          echo "Check logs for details."
+          exit 1
